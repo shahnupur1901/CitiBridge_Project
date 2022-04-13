@@ -7,8 +7,8 @@ public class Transaction {
 	private String payeeName;
 	private String payeeAccountNumber;
 	private double amount;
-	private int validationStatus;
-	private int sanctioningStatus;
+	private String validationStatus;
+	private String sanctioningStatus;
 	
 	
 	public Transaction() {}
@@ -54,16 +54,16 @@ public class Transaction {
 	public void setAmount(double amount) {
 		this.amount = amount;
 	}
-	public int getValidationStatus() {
+	public String getValidationStatus() {
 		return validationStatus;
 	}
-	public void setValidationStatus(int validationStatus) {
+	public void setValidationStatus(String validationStatus) {
 		this.validationStatus = validationStatus;
 	}
-	public int getSanctioningStatus() {
+	public String getSanctioningStatus() {
 		return sanctioningStatus;
 	}
-	public void setSanctioningStatus(int sanctioningStatus) {
+	public void setSanctioningStatus(String sanctioningStatus) {
 		this.sanctioningStatus = sanctioningStatus;
 	}
 	

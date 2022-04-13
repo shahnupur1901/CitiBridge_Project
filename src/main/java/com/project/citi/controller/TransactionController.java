@@ -23,7 +23,7 @@ public class TransactionController {
 	@Autowired
 	TransactionService transactionService;
 	
-	@GetMapping()
+	@GetMapping("/sanction")
 	public List<Transaction> sanctionTransactions() {
 		transactionService.sanctionTransactions();
 		List<Transaction> list = transactionService.retrieveAll();

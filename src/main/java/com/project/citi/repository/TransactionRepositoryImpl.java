@@ -33,10 +33,10 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				for(Transaction t : list) {
 				conn = dataSource.getConnection();
 				prepsmt=conn.prepareStatement(query);
-				prepsmt.setInt(9, this.validateTransactions(t));
-				prepsmt.setInt(8,1);
+				prepsmt.setString(9, this.validateTransactions(t));
+				prepsmt.setString(8,"In process.");
 				prepsmt.setString(1,t.getTransactionRefNo());
-				prepsmt.setString(2,t.getValueDate());
+				prepsmt.setString(2,this.formatDate(t.getValueDate()));
 				prepsmt.setString(3,t.getPayerName());
 				prepsmt.setString(4,t.getPayerAccountNumber());
 				prepsmt.setString(5,t.getPayeeName());
@@ -53,18 +53,36 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		
 		return "finished";
 		}
-	public int validateTransactions(Transaction t) {
+	
+	public String formatDate( String date) {
+		return "";
+	}
+	
+	public String validateTransactions(Transaction t) {
 		if(t.getTransactionRefNo().length() > 12) {
 			t.setTransactionRefNo(t.getTransactionRefNo().substring(0,12));
-			return 0;
+			return "Fail";
 		}
-		if(t.getValueDate().length() > 8) return 0;
-		if(t.getPayerName().length() > 35) return 0;
-		if(t.getPayerAccountNumber().length() > 12) return 0;
-		if(t.getPayeeName().length() > 35) return 0;
-		if(t.getPayeeAccountNumber().length() > 12) return 0;
-		return 1;
-			
+		if(t.getValueDate().length() > 8) {
+			return "Fail";
+		}
+		if(t.getPayerName().length() > 35) {
+			t.setPayerName(t.getPayerName().substring(0,35));
+			return "Fail";
+		}
+		if(t.getPayerAccountNumber().length() > 12){
+			t.setPayerAccountNumber(t.getPayerAccountNumber().substring(0,12));
+			return "Fail";
+		}
+		if(t.getPayeeName().length() > 35) {
+			t.setPayeeName(t.getPayeeName().substring(0,35));
+			return "Fail";
+		}
+		if(t.getPayeeAccountNumber().length() > 12) {
+			t.setPayeeAccountNumber(t.getPayeeAccountNumber().substring(0,12));
+			return "Fail";
+		}
+			return "Pass";		
 	}
 	
 	public List<String> getKeywords() {
@@ -115,12 +133,12 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				query = "update CurrentTransaction set sanctioningStatus = ? where transactionRefNo = ?";
 				if(keywords.contains(payeeName) || keywords.contains(payerName)) {
 					prepsmt=conn.prepareStatement(query);
-					prepsmt.setInt(1, 0);
+					prepsmt.setString(1, "Fail");
 					prepsmt.setString(2, transactionRefNumber);
 			    }
 				else {
 					prepsmt=conn.prepareStatement(query);
-					prepsmt.setInt(1, 1);
+					prepsmt.setString(1, "Pass");
 					prepsmt.setString(2, transactionRefNumber);
 				}
 				prepsmt.executeUpdate();
@@ -158,8 +176,8 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				t.setPayerAccountNumber(rs.getString("payerAccountNumber"));
 				t.setValueDate(rs.getString("valueDate"));
 				t.setAmount(rs.getDouble("amount"));
-				t.setSanctioningStatus(rs.getInt("sanctioningStatus"));
-				t.setValidationStatus(rs.getInt("validationStatus"));
+				t.setSanctioningStatus(rs.getString("sanctioningStatus"));
+				t.setValidationStatus(rs.getString("validationStatus"));
 				transactions.add(t);
 			}
 		}
@@ -175,6 +193,11 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		
 		
 	}
+	
+	String createQuery(String field, String status) {
+		if (status.equals("Pass")) return  "select * from CurrentTransaction where "+field+" = \"Pass\" ";
+		else return "select * from CurrentTransaction where "+field+" = \"Fail\" ";
+	}
 	@Override
 	public List<Transaction> filter(String field, String status) {
 		Connection conn = null;
@@ -187,11 +210,8 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 			conn=dataSource.getConnection();
 			PreparedStatement prepsmt=null;
 			ResultSet rs=null;// resultset hold whole row in a db
-			String query= " select * from CurrentTransaction where sanctioningStatus = 1;";
+			String query= createQuery(field,status);
 			prepsmt=conn.prepareStatement(query);
-			//prepsmt.setString(1, field);
-			System.out.println(field);System.out.println(option);
-			//prepsmt.setInt(2, option);
 			System.out.println(query);
 			rs=prepsmt.executeQuery();
 			while(rs.next())
@@ -204,8 +224,8 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				t.setPayerAccountNumber(rs.getString("payerAccountNumber"));
 				t.setValueDate(rs.getString("valueDate"));
 				t.setAmount(rs.getDouble("amount"));
-				t.setSanctioningStatus(rs.getInt("sanctioningStatus"));
-				t.setValidationStatus(rs.getInt("validationStatus"));
+				t.setSanctioningStatus(rs.getString("sanctioningStatus"));
+				t.setValidationStatus(rs.getString("validationStatus"));
 				transactions.add(t);
 			}
 		}
