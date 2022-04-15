@@ -19,6 +19,9 @@ import com.project.citi.utils.DBUtils;
 public class TransactionRepositoryImpl implements TransactionRepository{
 	@Autowired
 	DataSource dataSource;
+	
+	int currentCount = 2;
+	List<String> transactionRefNumberList = new ArrayList();;
 	public TransactionRepositoryImpl()
 	{	
 		
@@ -27,6 +30,7 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 	public String addTransactionFile(List<Transaction> list) {
 		Connection conn = null;
 		PreparedStatement prepsmt = null;
+		currentCount = 0;
 		String query = "insert into CurrentTransaction values(?,?,?,?,?,?,?,?,?);";
 			try
 			{
@@ -43,6 +47,8 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				prepsmt.setString(6,t.getPayeeAccountNumber());
 				prepsmt.setDouble(7,t.getAmount());
 				int res=prepsmt.executeUpdate();
+				currentCount++;
+				transactionRefNumberList.add(t.getTransactionRefNo());
 				}
 			}
 			catch(SQLException e)
@@ -54,8 +60,8 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		return "finished";
 		}
 	
-	public String formatDate( String date) {
-		return "";
+	public String formatDate(String date) {
+		return date.substring(0,2) +"-"+date.substring(2,4)+"-"+date.substring(4);
 	}
 	
 	public String validateTransactions(Transaction t) {
@@ -65,6 +71,9 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		}
 		if(t.getValueDate().length() > 8) {
 			return "Fail";
+		}
+		for(Character c : t.getValueDate().toCharArray()) {
+			if(!Character.isDigit(c)) return "Fail";
 		}
 		if(t.getPayerName().length() > 35) {
 			t.setPayerName(t.getPayerName().substring(0,35));
@@ -152,7 +161,51 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		{
 			DBUtils.closeConnection(conn);
 		}
+		this.truncateToArchive();
 		return "finished";
+	}
+	
+	public String truncateToArchive() {
+		Connection conn = null;
+		PreparedStatement selectPrepsmt = null;
+		PreparedStatement insertPrepsmt = null;
+		PreparedStatement truncatePrepsmt = null;
+		this.transactionRefNumberList.add("a2");
+		this.transactionRefNumberList.add("a3");
+			try
+			{
+				conn=dataSource.getConnection();
+				String insertQuery = "insert into archive values(?,?,?,?,?,?,?,?,?);";
+				for(int i=0;i<currentCount;i++) {
+					String selectQuery = "select * from CurrentTransaction where transactionRefNo = " + "\"" + this.transactionRefNumberList.get(i) + "\"";
+					selectPrepsmt=conn.prepareStatement(selectQuery);
+					ResultSet rs=selectPrepsmt.executeQuery();
+					if(rs.next()) {
+						insertPrepsmt=conn.prepareStatement(insertQuery);
+						insertPrepsmt.setString(9,rs.getString("validationStatus") );
+						insertPrepsmt.setString(8,rs.getString("sanctioningStatus"));
+						insertPrepsmt.setString(1,rs.getString("transactionRefNo"));
+						insertPrepsmt.setString(2,rs.getString("valueDate"));
+						insertPrepsmt.setString(3,rs.getString("payerName"));
+						insertPrepsmt.setString(4,rs.getString("payerAccountNumber"));
+						insertPrepsmt.setString(5,rs.getString("payeeName"));
+						insertPrepsmt.setString(6,rs.getString("payeeAccountNumber"));
+						insertPrepsmt.setDouble(7,rs.getDouble("amount"));
+						int res=insertPrepsmt.executeUpdate();
+					}
+				}
+				String truncateQuery = "truncate table CurrentTransaction";
+				truncatePrepsmt=conn.prepareStatement(truncateQuery);
+				int res=truncatePrepsmt.executeUpdate();
+			}
+			catch(SQLException e)
+			{
+				e.printStackTrace();
+			
+		}
+		
+		return "finished";
+		
 	}
 	
 	public List<Transaction> retrieveAll(){
@@ -189,8 +242,7 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		{
 			DBUtils.closeConnection(conn);
 		}
-		return transactions;
-		
+		return transactions;		
 		
 	}
 	
