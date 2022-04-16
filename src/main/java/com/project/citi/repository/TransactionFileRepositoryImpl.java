@@ -29,7 +29,7 @@ public class TransactionFileRepositoryImpl implements TransactionFileRepository{
 			conn=dataSource.getConnection();
 			PreparedStatement prepsmt=null;
 			ResultSet rs=null;// resultset hold whole row in a db
-			String query="select * from FileSystem;";
+			String query="select * from FileSystem order by time desc;";
 			prepsmt=conn.prepareStatement(query);
 			rs=prepsmt.executeQuery();
 			int count = 0;
