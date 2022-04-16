@@ -48,5 +48,11 @@ public class TransactionServiceImpl implements TransactionService {
 		return transactionRepository.retrieveAll();
 	}
 
+	@Override
+	public String returnMessage(String message, String transactionRefNo) {
+		// TODO Auto-generated method stub
+		return transactionRepository.returnMessage(message, transactionRefNo);
+	}
+
 	
 }

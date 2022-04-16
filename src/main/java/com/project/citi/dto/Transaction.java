@@ -9,7 +9,9 @@ public class Transaction {
 	private double amount;
 	private String validationStatus;
 	private String sanctioningStatus;
-	
+	private String sanctionFailMessage;
+	private String validationFailMessage;
+	private String filename;
 	
 	public Transaction() {}
 	public String getTransactionRefNo() {
@@ -29,6 +31,24 @@ public class Transaction {
 	}
 	public void setPayerName(String payerName) {
 		this.payerName = payerName;
+	}
+	public String getSanctionFailMessage() {
+		return sanctionFailMessage;
+	}
+	public void setSanctionFailMessage(String sanctionFailMessage) {
+		this.sanctionFailMessage = sanctionFailMessage;
+	}
+	public String getValidationFailMessage() {
+		return validationFailMessage;
+	}
+	public void setValidationFailMessage(String validationFailMessage) {
+		this.validationFailMessage = validationFailMessage;
+	}
+	public String getFilename() {
+		return filename;
+	}
+	public void setFilename(String filename) {
+		this.filename = filename;
 	}
 	public String getPayerAccountNumber() {
 		return payerAccountNumber;

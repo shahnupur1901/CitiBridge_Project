@@ -39,6 +39,12 @@ public class TransactionController {
 		return list;
 	}
 	
+	@GetMapping("/{message}/num/{transactionrefno}")
+	public String returnMessage(@PathVariable("message")String msg, @PathVariable("transactionrefno")String tno) 
+	{
+		return transactionService.returnMessage(msg, tno);
+	}
+	
 	@PostMapping("/add")
 	public String addTransactionFile(@RequestBody ArrayList<Transaction> list) {
 		return transactionService.addTransactionFile(list);

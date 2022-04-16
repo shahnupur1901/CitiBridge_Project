@@ -9,4 +9,5 @@ public interface TransactionService {
 	public String sanctionTransactions();
 	public List<Transaction> filter(String field, String status);
 	public List<Transaction> retrieveAll();
+	public String returnMessage(String message, String transactionRefNo);
 }

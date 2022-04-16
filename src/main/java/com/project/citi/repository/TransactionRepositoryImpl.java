@@ -4,6 +4,9 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Timestamp;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,6 +16,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
 import com.project.citi.dto.Transaction;
+import com.project.citi.dto.TransactionFile;
 import com.project.citi.utils.DBUtils;
 
 @Repository	
@@ -20,7 +24,7 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 	@Autowired
 	DataSource dataSource;
 	
-	int currentCount = 2;
+	int currentCount = 0;
 	List<String> transactionRefNumberList = new ArrayList();;
 	public TransactionRepositoryImpl()
 	{	
@@ -31,14 +35,19 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		Connection conn = null;
 		PreparedStatement prepsmt = null;
 		currentCount = 0;
-		String query = "insert into CurrentTransaction values(?,?,?,?,?,?,?,?,?);";
+		String query = "insert into CurrentTransaction values(?,?,?,?,?,?,?,?,?,?,?,?);";
 			try
 			{
 				for(Transaction t : list) {
 				conn = dataSource.getConnection();
 				prepsmt=conn.prepareStatement(query);
-				prepsmt.setString(9, this.validateTransactions(t));
-				prepsmt.setString(8,"In process.");
+				String vstatus = this.validateTransactions(t);
+				if(vstatus.equals("Pass"))  prepsmt.setString(9, "Pass");
+				else prepsmt.setString(9, "Fail");
+				prepsmt.setString(8,"Pending");
+				prepsmt.setString(10,null);
+				prepsmt.setString(11,vstatus);
+				prepsmt.setString(12,t.getFilename());
 				prepsmt.setString(1,t.getTransactionRefNo());
 				prepsmt.setString(2,this.formatDate(t.getValueDate()));
 				prepsmt.setString(3,t.getPayerName());
@@ -61,35 +70,36 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		}
 	
 	public String formatDate(String date) {
-		return date.substring(0,2) +"-"+date.substring(2,4)+"-"+date.substring(4);
+		if(date.length() != 8 ) return null;
+		return date.substring(4) +"-"+date.substring(2,4)+"-"+date.substring(0,2);
 	}
 	
 	public String validateTransactions(Transaction t) {
 		if(t.getTransactionRefNo().length() > 12) {
 			t.setTransactionRefNo(t.getTransactionRefNo().substring(0,12));
-			return "Fail";
+			return "Transaction Reference Number exceeds 12 characters.";
 		}
 		if(t.getValueDate().length() > 8) {
-			return "Fail";
+			return "Wrong date.";
 		}
 		for(Character c : t.getValueDate().toCharArray()) {
-			if(!Character.isDigit(c)) return "Fail";
+			if(!Character.isDigit(c)) return "Date should not contain non-digit characters.";
 		}
 		if(t.getPayerName().length() > 35) {
 			t.setPayerName(t.getPayerName().substring(0,35));
-			return "Fail";
+			return "Payer name exceeds 35 characters.";
 		}
 		if(t.getPayerAccountNumber().length() > 12){
 			t.setPayerAccountNumber(t.getPayerAccountNumber().substring(0,12));
-			return "Fail";
+			return "Payer account number exceeds 12 characters.";
 		}
 		if(t.getPayeeName().length() > 35) {
 			t.setPayeeName(t.getPayeeName().substring(0,35));
-			return "Fail";
+			return "Payee name exceeds 35 characters.";
 		}
 		if(t.getPayeeAccountNumber().length() > 12) {
 			t.setPayeeAccountNumber(t.getPayeeAccountNumber().substring(0,12));
-			return "Fail";
+			return "Payee account number exceeds 12 characters.";
 		}
 			return "Pass";		
 	}
@@ -125,6 +135,7 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 	public String sanctionTransactions() {
 		Connection conn = null;
 		List<String> keywords = this.getKeywords();
+		System.out.println(keywords);
 		try
 		{
 			conn=dataSource.getConnection();
@@ -139,16 +150,24 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				String transactionRefNumber = rs.getString("transactionRefNo");
 				String payerName = rs.getString("payerName"); 
 				String payeeName = rs.getString("payeeName"); 
-				query = "update CurrentTransaction set sanctioningStatus = ? where transactionRefNo = ?";
-				if(keywords.contains(payeeName) || keywords.contains(payerName)) {
+				query = "update CurrentTransaction set sanctioningStatus = ?, sanctionFailMessage = ? where transactionRefNo = ?";
+				if(keywords.contains(payeeName) ) {
 					prepsmt=conn.prepareStatement(query);
 					prepsmt.setString(1, "Fail");
-					prepsmt.setString(2, transactionRefNumber);
+					prepsmt.setString(3, transactionRefNumber);
+					prepsmt.setString(2, "Payee name in keyword list.");
 			    }
+				else if(keywords.contains(payerName)) {
+					prepsmt=conn.prepareStatement(query);
+					prepsmt.setString(1, "Fail");
+					prepsmt.setString(3, transactionRefNumber);
+					prepsmt.setString(2, "Payer name in keyword list.");
+				}
 				else {
 					prepsmt=conn.prepareStatement(query);
 					prepsmt.setString(1, "Pass");
-					prepsmt.setString(2, transactionRefNumber);
+					prepsmt.setString(3, transactionRefNumber);
+					prepsmt.setString(2, "Pass");
 				}
 				prepsmt.executeUpdate();
 			}
@@ -161,7 +180,7 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		{
 			DBUtils.closeConnection(conn);
 		}
-		this.truncateToArchive();
+		//this.truncateToArchive();
 		return "finished";
 	}
 	
@@ -175,15 +194,18 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 			try
 			{
 				conn=dataSource.getConnection();
-				String insertQuery = "insert into archive values(?,?,?,?,?,?,?,?,?);";
+				String insertQuery = "insert into archive values(?,?,?,?,?,?,?,?,?,?,?,?);";
 				for(int i=0;i<currentCount;i++) {
 					String selectQuery = "select * from CurrentTransaction where transactionRefNo = " + "\"" + this.transactionRefNumberList.get(i) + "\"";
 					selectPrepsmt=conn.prepareStatement(selectQuery);
 					ResultSet rs=selectPrepsmt.executeQuery();
 					if(rs.next()) {
 						insertPrepsmt=conn.prepareStatement(insertQuery);
-						insertPrepsmt.setString(9,rs.getString("validationStatus") );
+						insertPrepsmt.setString(9,rs.getString("validationStatus"));
 						insertPrepsmt.setString(8,rs.getString("sanctioningStatus"));
+						insertPrepsmt.setString(10,rs.getString("sanctionFailMessage"));
+						insertPrepsmt.setString(11,rs.getString("validationFailMessage"));
+						insertPrepsmt.setString(12,rs.getString("filename"));
 						insertPrepsmt.setString(1,rs.getString("transactionRefNo"));
 						insertPrepsmt.setString(2,rs.getString("valueDate"));
 						insertPrepsmt.setString(3,rs.getString("payerName"));
@@ -197,6 +219,7 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				String truncateQuery = "truncate table CurrentTransaction";
 				truncatePrepsmt=conn.prepareStatement(truncateQuery);
 				int res=truncatePrepsmt.executeUpdate();
+				this.fileStatistics();
 			}
 			catch(SQLException e)
 			{
@@ -231,6 +254,9 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				t.setAmount(rs.getDouble("amount"));
 				t.setSanctioningStatus(rs.getString("sanctioningStatus"));
 				t.setValidationStatus(rs.getString("validationStatus"));
+				t.setFilename(rs.getString("filename"));
+				t.setSanctionFailMessage(rs.getString("sanctionFailMessage"));
+				t.setValidationFailMessage(rs.getString("validationFailMessage"));
 				transactions.add(t);
 			}
 		}
@@ -278,6 +304,9 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				t.setAmount(rs.getDouble("amount"));
 				t.setSanctioningStatus(rs.getString("sanctioningStatus"));
 				t.setValidationStatus(rs.getString("validationStatus"));
+				t.setFilename(rs.getString("filename"));
+				t.setSanctionFailMessage(rs.getString("sanctionFailMessage"));
+				t.setValidationFailMessage(rs.getString("validationFailMessage"));
 				transactions.add(t);
 			}
 		}
@@ -292,6 +321,81 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		return transactions;
 		
 	}
+	
+	public String returnMessage(String message, String transactionRefNo) {
 		
+		Connection conn = null;
+		try
+		{
+			conn=dataSource.getConnection();
+			PreparedStatement prepsmt=null;
+			ResultSet rs=null;// resultset hold whole row in a db
+			String query="select "+message+" from CurrentTransaction where transactionRefNo = "+ "\"" + transactionRefNo + "\"";
+			prepsmt=conn.prepareStatement(query);
+			rs=prepsmt.executeQuery();
+			if(rs.next())
+			{
+				String rmsg = rs.getString(0);
+				return rmsg;
+			}
+		}
+		catch(SQLException e)
+		{
+			e.printStackTrace();
+		}
+	    finally
+		{
+			DBUtils.closeConnection(conn);
+		}
+		
+		return "No such transactionRefNo";
+		
+	}
+	
+	public TransactionFile fileStatistics() {
+		Connection conn = null;
+		TransactionFile tf = null;
+		try
+		{
+			conn=dataSource.getConnection();
+			PreparedStatement prepsmt=null;
+			ResultSet rs=null;// resultset hold whole row in a db
+			String query="select sanctioningStatus, validationStatus,filename from CurrentTransaction;";
+			prepsmt=conn.prepareStatement(query);
+			rs=prepsmt.executeQuery();
+			int numValidationFailed = 0, numSanctionFailed=0, numTransaction = 0;
+			String filename = "";
+			while(rs.next())
+			{
+				numTransaction++;
+				String ss = rs.getString("sanctioningStatus");
+				if(ss.equals("Fail")) numSanctionFailed++;
+				String vs = rs.getString("validationStatus");
+				if(vs.equals("Fail")) numValidationFailed++;
+				filename = rs.getString("filename");
+			}
+			Timestamp ts = Timestamp.valueOf(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
+			tf = new TransactionFile(filename, numTransaction, ts, numValidationFailed, numSanctionFailed);
+			String insertquery = "insert into FileSystem values(?,?,?,?,?,?);";
+			PreparedStatement insertprepsmt=conn.prepareStatement(query);
+			insertprepsmt.setString(1,tf.getFilename());
+			insertprepsmt.setInt(2,tf.getNumTransactions());
+			insertprepsmt.setTimestamp(3,tf.getTimestamp());
+			insertprepsmt.setInt(4,tf.getNumValidationFailed());
+			insertprepsmt.setInt(5,tf.getNumSanctionFailed());
+			int res=prepsmt.executeUpdate();
+			
+		}
+		catch(SQLException e)
+		{
+			e.printStackTrace();
+		}
+	    finally
+		{
+			DBUtils.closeConnection(conn);
+		}
+		
+		return tf;
+	}
 
 }
