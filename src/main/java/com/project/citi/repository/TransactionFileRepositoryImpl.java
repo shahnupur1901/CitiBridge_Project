@@ -38,11 +38,11 @@ public class TransactionFileRepositoryImpl implements TransactionFileRepository{
 				count++;
 				if(count > 10) break;
 				TransactionFile tf = new TransactionFile();
-				tf.setFilename(rs.getString(0));
-				tf.setNumTransactions(rs.getInt(1));
-				tf.setTimestamp(rs.getTimestamp(2));
-				tf.setNumValidationFailed(rs.getInt(3));
-				tf.setNumSanctionFailed(rs.getInt(3));
+				tf.setFilename(rs.getString(1));
+				tf.setNumTransactions(rs.getInt(2));
+				tf.setTimestamp(rs.getTimestamp(3));
+				tf.setNumValidationFailed(rs.getInt(4));
+				tf.setNumSanctionFailed(rs.getInt(5));
 				transactionFiles.add(tf);
 			}
 		}

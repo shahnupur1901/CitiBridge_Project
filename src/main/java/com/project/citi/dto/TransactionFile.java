@@ -3,6 +3,12 @@ package com.project.citi.dto;
 import java.sql.Timestamp;
 
 public class TransactionFile {
+	@Override
+	public String toString() {
+		return "TransactionFile [filename=" + filename + ", numTransactions=" + numTransactions + ", timestamp="
+				+ timestamp + ", numValidationFailed=" + numValidationFailed + ", numSanctionFailed="
+				+ numSanctionFailed + "]";
+	}
 	public TransactionFile(String filename, int numTransactions, Timestamp timestamp, int numValidationFailed,
 			int numSanctionFailed) {
 		super();

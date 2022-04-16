@@ -11,4 +11,5 @@ public interface TransactionRepository {
 	public List<Transaction> filter(String field, String status);
 	public List<Transaction> retrieveAll();
 	public String returnMessage(String message, String transactionRefNo);
+	public String truncateToArchive();
 }

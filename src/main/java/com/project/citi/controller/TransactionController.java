@@ -30,6 +30,12 @@ public class TransactionController {
 		return list;
 	}
 	
+	@GetMapping("/truncate")
+	public String truncateCT() {
+		transactionService.truncateToArchive();
+		return "done";
+	}
+	
 	@GetMapping("/{field}/{status}")
 	public List<Transaction> filter(@PathVariable("field")String field, @PathVariable("status")String status) 
 	{
@@ -48,6 +54,12 @@ public class TransactionController {
 	@PostMapping("/add")
 	public String addTransactionFile(@RequestBody ArrayList<Transaction> list) {
 		return transactionService.addTransactionFile(list);
+	}
+	
+	@GetMapping("/validate")
+	public List<Transaction> validateTransactions() {
+		List<Transaction> list = transactionService.retrieveAll();
+		return list;
 	}
 	
 	

@@ -189,10 +189,9 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		PreparedStatement selectPrepsmt = null;
 		PreparedStatement insertPrepsmt = null;
 		PreparedStatement truncatePrepsmt = null;
-		this.transactionRefNumberList.add("a2");
-		this.transactionRefNumberList.add("a3");
 			try
 			{
+				this.fileStatistics();
 				conn=dataSource.getConnection();
 				String insertQuery = "insert into archive values(?,?,?,?,?,?,?,?,?,?,?,?);";
 				for(int i=0;i<currentCount;i++) {
@@ -219,7 +218,8 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				String truncateQuery = "truncate table CurrentTransaction";
 				truncatePrepsmt=conn.prepareStatement(truncateQuery);
 				int res=truncatePrepsmt.executeUpdate();
-				this.fileStatistics();
+				this.transactionRefNumberList.clear();
+				currentCount = 0;
 			}
 			catch(SQLException e)
 			{
@@ -335,7 +335,7 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 			rs=prepsmt.executeQuery();
 			if(rs.next())
 			{
-				String rmsg = rs.getString(0);
+				String rmsg = rs.getString(1);
 				return rmsg;
 			}
 		}
@@ -373,17 +373,19 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				String vs = rs.getString("validationStatus");
 				if(vs.equals("Fail")) numValidationFailed++;
 				filename = rs.getString("filename");
+				System.out.println(numTransaction);
 			}
 			Timestamp ts = Timestamp.valueOf(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 			tf = new TransactionFile(filename, numTransaction, ts, numValidationFailed, numSanctionFailed);
-			String insertquery = "insert into FileSystem values(?,?,?,?,?,?);";
-			PreparedStatement insertprepsmt=conn.prepareStatement(query);
+			System.out.println(tf.toString());
+			String insertquery = "insert into FileSystem values(?,?,?,?,?);";
+			PreparedStatement insertprepsmt=conn.prepareStatement(insertquery);
 			insertprepsmt.setString(1,tf.getFilename());
 			insertprepsmt.setInt(2,tf.getNumTransactions());
 			insertprepsmt.setTimestamp(3,tf.getTimestamp());
 			insertprepsmt.setInt(4,tf.getNumValidationFailed());
 			insertprepsmt.setInt(5,tf.getNumSanctionFailed());
-			int res=prepsmt.executeUpdate();
+			int res=insertprepsmt.executeUpdate();
 			
 		}
 		catch(SQLException e)

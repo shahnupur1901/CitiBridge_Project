@@ -31,6 +31,11 @@ public class TransactionServiceImpl implements TransactionService {
 		// TODO Auto-generated method stub
 		return transactionRepository.addTransactionFile(list);
 	}
+	
+	public String truncateToArchive() {
+		transactionRepository.truncateToArchive();
+		return "Done";
+	}
 
 	@Override
 	public String sanctionTransactions() {
