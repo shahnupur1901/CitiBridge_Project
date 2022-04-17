@@ -14,6 +14,7 @@ import javax.sql.DataSource;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.project.citi.dto.Transaction;
 import com.project.citi.dto.TransactionFile;
@@ -64,14 +65,18 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 			{
 				e.printStackTrace();
 			
-		}
+			}
+			finally
+			{
+				DBUtils.closeConnection(conn);
+			}
 		
 		return "finished";
 		}
 	
 	public String formatDate(String date) {
 		if(date.length() != 8 ) return null;
-		return date.substring(4) +"-"+date.substring(2,4)+"-"+date.substring(0,2);
+		return date.substring(4) +"-"+date.substring(0,2)+"-"+date.substring(2,4);
 	}
 	
 	public String validateTransactions(Transaction t) {
@@ -189,10 +194,12 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		PreparedStatement selectPrepsmt = null;
 		PreparedStatement insertPrepsmt = null;
 		PreparedStatement truncatePrepsmt = null;
+		System.out.println("hi"+currentCount);
+		TransactionFile tf = null;
 			try
 			{
-				this.fileStatistics();
 				conn=dataSource.getConnection();
+				this.fileStatistics();
 				String insertQuery = "insert into archive values(?,?,?,?,?,?,?,?,?,?,?,?);";
 				for(int i=0;i<currentCount;i++) {
 					String selectQuery = "select * from CurrentTransaction where transactionRefNo = " + "\"" + this.transactionRefNumberList.get(i) + "\"";
@@ -212,12 +219,12 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 						insertPrepsmt.setString(5,rs.getString("payeeName"));
 						insertPrepsmt.setString(6,rs.getString("payeeAccountNumber"));
 						insertPrepsmt.setDouble(7,rs.getDouble("amount"));
-						int res=insertPrepsmt.executeUpdate();
+						int res1=insertPrepsmt.executeUpdate();
 					}
 				}
 				String truncateQuery = "truncate table CurrentTransaction";
 				truncatePrepsmt=conn.prepareStatement(truncateQuery);
-				int res=truncatePrepsmt.executeUpdate();
+				int res2=truncatePrepsmt.executeUpdate();
 				this.transactionRefNumberList.clear();
 				currentCount = 0;
 			}
@@ -225,7 +232,11 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 			{
 				e.printStackTrace();
 			
-		}
+			}
+			finally
+			{
+				DBUtils.closeConnection(conn);
+			}
 		
 		return "finished";
 		
@@ -358,6 +369,7 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 		try
 		{
 			conn=dataSource.getConnection();
+			System.out.println("xoxo");
 			PreparedStatement prepsmt=null;
 			ResultSet rs=null;// resultset hold whole row in a db
 			String query="select sanctioningStatus, validationStatus,filename from CurrentTransaction;";
@@ -373,7 +385,9 @@ public class TransactionRepositoryImpl implements TransactionRepository{
 				String vs = rs.getString("validationStatus");
 				if(vs.equals("Fail")) numValidationFailed++;
 				filename = rs.getString("filename");
-				System.out.println(numTransaction);
+				
+				
+	
 			}
 			Timestamp ts = Timestamp.valueOf(LocalDateTime.now(ZoneId.of("Asia/Kolkata")));
 			tf = new TransactionFile(filename, numTransaction, ts, numValidationFailed, numSanctionFailed);

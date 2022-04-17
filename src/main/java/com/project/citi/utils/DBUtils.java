@@ -34,6 +34,12 @@ public class DBUtils
 	
 	public static void closeConnection(Connection connection)
 	{
+		try {
+			connection.close();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		
 		
 	}
